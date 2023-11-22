@@ -3,3 +3,61 @@ from sqlalchemy_serializer import SerializerMixin
 from sqlalchemy.orm import validates
 from sqlalchemy.ext.hybrid import hybrid_method
 from datetime import datetime
+
+class Asset(db.Model, SerializerMixin):
+    assetID = db.Column(db.Integer, primary_key=True)
+    assetName = db.Column(db.String(255))
+    model = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    imageUrl = db.Column(db.String(255))
+    manufacturer = db.Column(db.String(255))
+    datePurchased = db.Column(db.TIMESTAMP)
+    status = db.Column(db.String(50))
+    category = db.Column(db.String(50))
+
+    assignments = db.relationship('Assignment', backref='asset')
+    maintenances = db.relationship('Maintenance', backref='asset')
+    transactions = db.relationship('Transaction', backref='asset')
+
+class User(db.Model, SerializerMixin):
+    userid = db.Column(db.Integer, primary_key=True)
+    firstName = db.Column(db.String(255))
+    lastName = db.Column(db.String(255))
+    username = db.Column(db.String(50), unique=True)
+    email = db.Column(db.String(255))
+    role = db.Column(db.String(50))
+    department = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    
+    assignments = db.relationship('Assignment', backref='user')
+    requests = db.relationship('Requests', backref='user')
+
+class Assignment(db.Model, SerializerMixin):
+    id = db.Column(db.Integer, primary_key=True)
+    assetID = db.Column(db.Integer, db.ForeignKey('asset.assetID'))
+    userid = db.Column(db.Integer, db.ForeignKey('user.userid'))
+    assignmentDate = db.Column(db.Date)
+    returnDate = db.Column(db.Date)
+
+class Maintenance(db.Model, SerializerMixin):
+    maintenanceId = db.Column(db.Integer, primary_key=True)
+    assetID = db.Column(db.Integer, db.ForeignKey('asset.assetID'))
+    dateofmaintenance = db.Column(db.Date)
+    type = db.Column(db.String(50))
+    description = db.Column(db.String(255))
+
+class Transaction(db.Model, SerializerMixin):
+    transactionid = db.Column(db.Integer, primary_key=True)
+    assetID = db.Column(db.Integer, db.ForeignKey('asset.assetID'))
+    transactionDate = db.Column(db.Date)
+    transactiontype = db.Column(db.String(50))
+
+class Requests(db.Model, SerializerMixin):
+    requestID = db.Column(db.Integer, primary_key=True)
+    userid = db.Column(db.Integer, db.ForeignKey('user.userid'))
+    description = db.Column(db.String(255))
+    status = db.Column(db.String(50))
+    assetName = db.Column(db.String(255))
+
+    user = db.relationship('User', backref='requests')
