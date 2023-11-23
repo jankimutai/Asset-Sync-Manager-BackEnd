@@ -11,7 +11,7 @@ class Asset(db.Model, SerializerMixin):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     imageUrl = db.Column(db.String(255))
     manufacturer = db.Column(db.String(255))
-    datePurchased = db.Column(db.TIMESTAMP)
+    datePurchased = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(50))
     category = db.Column(db.String(50))
 
@@ -38,16 +38,17 @@ class User(db.Model, SerializerMixin):
     assignments = db.relationship('Assignment', backref='user')
     requests = db.relationship('Requests', backref='user')
 
-    @hybrid_method
-    def set_password(self, password):
-        self._password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
-
-    def check_password(self, password):
-        return bcrypt.check_password_hash(self._password_hash, password)
-
     @hybrid_property
     def password_hash(self):
-        return self._password_hash
+        raise AttributeError('password hash may not be viewed')
+
+    @password_hash.setter
+    def password_hash(self,password):
+        password_hash = bcrypt.generate_password_hash(password.encode('utf-8'))
+        self._password_hash = password_hash.decode('utf-8')
+
+    def authenticate(self,password):
+        return bcrypt.check_password_hash(self._password_hash,password.encode('utf-8'))
 
     @validates('email')
     def validate_email(self, key, value):
