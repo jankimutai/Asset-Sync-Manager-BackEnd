@@ -27,8 +27,7 @@ class Asset(db.Model, SerializerMixin):
 
 class User(db.Model, SerializerMixin):
     userid = db.Column(db.Integer, primary_key=True)
-    firstName = db.Column(db.String(255), nullable=False)
-    lastName = db.Column(db.String(255), nullable=False)
+    fullName = db.Column(db.String(255), nullable=False)
     username = db.Column(db.String(50), unique=True, nullable=False)
     email = db.Column(db.String(255), nullable=False)
     _password_hash = db.Column('password_hash', db.String(255), nullable=False)
@@ -86,13 +85,4 @@ class Requests(db.Model, SerializerMixin):
 
     user = db.relationship('User', backref='requests')
 
-class Reviews(db.Model, SerializerMixin):
-    reviewID = db.Column(db.Integer, primary_key=True)
-    assetID = db.Column(db.Integer, db.ForeignKey('asset.assetID'))
-    userid = db.Column(db.Integer, db.ForeignKey('user.userid'))
-    rating = db.Column(db.Integer)
-    comment = db.Column(db.String(255))
-    reviewDate = db.Column(db.DateTime)
 
-    user = db.relationship('User', backref='reviews')
-    asset = db.relationship('Asset', backref='reviews')
