@@ -1,13 +1,13 @@
-from config import db,bcrypt
+from config import db, bcrypt
 from sqlalchemy_serializer import SerializerMixin
 from sqlalchemy.orm import validates
-from sqlalchemy.ext.hybrid import hybrid_method
+from sqlalchemy.ext.hybrid import hybrid_method, hybrid_property
 from datetime import datetime
 
 class Asset(db.Model, SerializerMixin):
     assetID = db.Column(db.Integer, primary_key=True)
-    assetName = db.Column(db.String(255))
-    model = db.Column(db.String(255))
+    assetName = db.Column(db.String(255), nullable=False)
+    model = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     imageUrl = db.Column(db.String(255))
     manufacturer = db.Column(db.String(255))
@@ -19,19 +19,43 @@ class Asset(db.Model, SerializerMixin):
     maintenances = db.relationship('Maintenance', backref='asset')
     transactions = db.relationship('Transaction', backref='asset')
 
+    @validates('status')
+    def validate_status(self, _, value):
+        if value not in ['Active', 'Pending', 'Under Maintenance']:
+         raise ValueError(f"Invalid status: {value}. Must be 'Active', 'Pending', or 'Under Maintenance'.")
+        return value
+
 class User(db.Model, SerializerMixin):
     userid = db.Column(db.Integer, primary_key=True)
-    firstName = db.Column(db.String(255))
-    lastName = db.Column(db.String(255))
-    username = db.Column(db.String(50), unique=True)
-    email = db.Column(db.String(255))
+    firstName = db.Column(db.String(255), nullable=False)
+    lastName = db.Column(db.String(255), nullable=False)
+    username = db.Column(db.String(50), unique=True, nullable=False)
+    email = db.Column(db.String(255), nullable=False)
+    _password_hash = db.Column('password_hash', db.String(255), nullable=False)
     role = db.Column(db.String(50))
-    department = db.Column(db.String(255))
+    department = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    
     assignments = db.relationship('Assignment', backref='user')
     requests = db.relationship('Requests', backref='user')
+
+    @hybrid_method
+    def set_password(self, password):
+        self._password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
+
+    def check_password(self, password):
+        return bcrypt.check_password_hash(self._password_hash, password)
+
+    @hybrid_property
+    def password_hash(self):
+        return self._password_hash
+
+    @validates('email')
+    def validate_email(self, key, value):
+        # Add email validation logic as needed
+        if not value or '@' not in value:
+            raise ValueError("Invalid email address.")
+        return value
 
 class Assignment(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -61,3 +85,14 @@ class Requests(db.Model, SerializerMixin):
     assetName = db.Column(db.String(255))
 
     user = db.relationship('User', backref='requests')
+
+class Reviews(db.Model, SerializerMixin):
+    reviewID = db.Column(db.Integer, primary_key=True)
+    assetID = db.Column(db.Integer, db.ForeignKey('asset.assetID'))
+    userid = db.Column(db.Integer, db.ForeignKey('user.userid'))
+    rating = db.Column(db.Integer)
+    comment = db.Column(db.String(255))
+    reviewDate = db.Column(db.DateTime)
+
+    user = db.relationship('User', backref='reviews')
+    asset = db.relationship('Asset', backref='reviews')
