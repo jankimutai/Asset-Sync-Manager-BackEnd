@@ -87,3 +87,19 @@ with db.app.app_context():
         db.session.commit()
 
     print('Generating maintenance records')
+
+
+    transactions = []
+
+    for _ in range(30):
+        transaction = Transaction(
+            asset=rc(assets),
+            transactionDate=fake.date_time(),
+            transactiontype=fake.word()
+        )
+
+        transactions.append(transaction)
+        db.session.add_all(transactions)
+        db.session.commit()
+
+    print('Generating transactions')
