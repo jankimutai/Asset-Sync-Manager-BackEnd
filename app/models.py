@@ -17,6 +17,10 @@ class Asset(db.Model, SerializerMixin):
     status = db.Column(db.String(50))
     category = db.Column(db.String(50))
 
+    assignments = db.relationship('Assignment', backref='asset')
+    maintenances = db.relationship('Maintenance', backref='asset')
+    transactions = db.relationship('Transaction', backref='asset')
+
     @validates('status')
     def validate_status(self, _, value):
         if value not in ['Active', 'Pending', 'Under Maintenance']:
@@ -34,6 +38,9 @@ class User(db.Model, SerializerMixin):
     role = db.Column(db.String(50))
     department = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    assignments = db.relationship('Assignment', backref='user')
+    requests = db.relationship('Requests', backref='user')
 
     @hybrid_property
     def password_hash(self):
@@ -63,6 +70,7 @@ class Assignment(db.Model, SerializerMixin):
 
 class Maintenance(db.Model, SerializerMixin):
     __tablename__ = 'maintenance'
+    serialize_rules = ('-asset.maintenances',)
     maintenanceId = db.Column(db.Integer, primary_key=True)
     assetID = db.Column(db.Integer, db.ForeignKey('asset.assetID'))
     dateofmaintenance = db.Column(db.Date)
@@ -84,5 +92,5 @@ class Requests(db.Model, SerializerMixin):
     description = db.Column(db.String(255))
     status = db.Column(db.String(50))
     assetName = db.Column(db.String(255))
-    
+
     user = db.relationship('User', backref='requests')
