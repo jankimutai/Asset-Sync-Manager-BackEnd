@@ -71,3 +71,19 @@ with db.app.app_context():
         db.session.commit()
 
     print('Generating assignments')
+
+    maintenances = []
+
+    for _ in range(15):
+        maintenance = Maintenance(
+            asset=rc(assets),
+            dateofmaintenance=fake.date_time(),
+            type=fake.word(),
+            description=fake.text()
+        )
+
+        maintenances.append(maintenance)
+        db.session.add_all(maintenances)
+        db.session.commit()
+
+    print('Generating maintenance records')
