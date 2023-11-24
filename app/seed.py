@@ -103,3 +103,21 @@ with db.app.app_context():
         db.session.commit()
 
     print('Generating transactions')
+
+    requests = []
+
+    for _ in range(10):
+        request = Requests(
+            user=rc(users),
+            description=fake.text(),
+            status=rc(['Pending', 'Approved', 'Rejected']),
+            assetName=fake.word()
+        )
+
+        requests.append(request)
+        db.session.add_all(requests)
+        db.session.commit()
+
+    print('Generating requests')
+
+    print('Done seeding...')
