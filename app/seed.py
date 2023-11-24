@@ -54,4 +54,20 @@ with db.app.app_context():
         db.session.add_all(users)
         db.session.commit()
 
-    print('Generating users with fake hashed passwords')
+    print('Generating users')
+
+    assignments = []
+
+    for _ in range(20):
+        assignment = Assignment(
+            asset=rc(assets),
+            user=rc(users),
+            assignmentDate=fake.date_time(),
+            returnDate=fake.date_time()
+        )
+
+        assignments.append(assignment)
+        db.session.add_all(assignments)
+        db.session.commit()
+
+    print('Generating assignments')
