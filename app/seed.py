@@ -22,7 +22,7 @@ with db.app.app_context():
         asset = Asset(
             assetName=fake.word(),
             model=fake.word(),
-            imageUrl=fake.image_url(),  # Use Faker's image_url to generate image URLs
+            imageUrl=fake.image_url(),  
             manufacturer=fake.word(),
             datePurchased=fake.date_time(),
             status=rc(['Active', 'Pending', 'Under Maintenance']),
@@ -34,3 +34,24 @@ with db.app.app_context():
         db.session.commit()
 
     print('Generating assets')
+
+    users = []
+
+    for i in range(30):
+        fake_password = fake.password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True)
+        hashed_password = bcrypt.generate_password_hash(fake_password).decode('utf-8')
+
+        user = User(
+            fullName=fake.name(),
+            username=fake.user_name(),
+            email=fake.email(),
+            password_hash=hashed_password,
+            role=fake.word(),
+            department=fake.word()
+        )
+
+        users.append(user)
+        db.session.add_all(users)
+        db.session.commit()
+
+    print('Generating users with fake hashed passwords')
