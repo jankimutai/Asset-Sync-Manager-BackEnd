@@ -6,20 +6,23 @@ from datetime import datetime
 
 class Asset(db.Model, SerializerMixin):
     __tablename__ = 'asset'
+
     serialize_rules = ('-assignments.asset', '-maintenances.asset', '-transactions.asset')
-    assetID = db.Column(db.Integer, primary_key=True)
-    assetName = db.Column(db.String(255), nullable=False)
+
+    id = db.Column(db.Integer, primary_key=True)
+    asset_name = db.Column(db.String(255), nullable=False)
     model = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    imageUrl = db.Column(db.String(255))
+    image_url = db.Column(db.String(255))
     manufacturer = db.Column(db.String(255))
-    datePurchased = db.Column(db.DateTime, default=datetime.utcnow)
+    date_purchased = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(50))
     category = db.Column(db.String(50))
-
-    assignments = db.relationship('Assignment', backref='asset')
-    maintenances = db.relationship('Maintenance', backref='asset')
-    transactions = db.relationship('Transaction', backref='asset')
+    
+    # Relationships
+    assignments = db.relationship('Assignment', back_populates='asset')
+    maintenances = db.relationship('Maintenance', back_populates='asset')
+    transactions = db.relationship('Transaction', back_populates='asset')
 
     @validates('status')
     def validate_status(self, _, value):
@@ -29,9 +32,10 @@ class Asset(db.Model, SerializerMixin):
 
 class User(db.Model, SerializerMixin):
     __tablename__ = 'user'
+
     serialize_rules = ('-assignments.user', '-requests.user')
-    userid = db.Column(db.Integer, primary_key=True)
-    fullName = db.Column(db.String(255), nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
+    full_name = db.Column(db.String(255), nullable=False)
     username = db.Column(db.String(50), unique=True, nullable=False)
     email = db.Column(db.String(255), nullable=False)
     _password_hash = db.Column('password_hash', db.String(255), nullable=False)
@@ -39,8 +43,9 @@ class User(db.Model, SerializerMixin):
     department = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    assignments = db.relationship('Assignment', backref='user')
-    requests = db.relationship('Requests', backref='user')
+    # Relationships
+    assignments = db.relationship('Assignment', back_populates='user')
+    requests = db.relationship('Requests', back_populates='user')
 
     @hybrid_property
     def password_hash(self):
@@ -62,35 +67,48 @@ class User(db.Model, SerializerMixin):
 
 class Assignment(db.Model, SerializerMixin):
     __tablename__ = 'assignment'
+
     id = db.Column(db.Integer, primary_key=True)
-    assetID = db.Column(db.Integer, db.ForeignKey('asset.assetID'))
-    userid = db.Column(db.Integer, db.ForeignKey('user.userid'))
-    assignmentDate = db.Column(db.Date)
-    returnDate = db.Column(db.Date)
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    assignment_date = db.Column(db.Date)
+    return_date = db.Column(db.Date)
+
+    # Relationships
+    asset = db.relationship('Asset', back_populates='assignments')
+    user = db.relationship('User', back_populates='assignments')
 
 class Maintenance(db.Model, SerializerMixin):
     __tablename__ = 'maintenance'
     serialize_rules = ('-asset.maintenances',)
-    maintenanceId = db.Column(db.Integer, primary_key=True)
-    assetID = db.Column(db.Integer, db.ForeignKey('asset.assetID'))
-    dateofmaintenance = db.Column(db.Date)
+    
+    maintenance_id = db.Column(db.Integer, primary_key=True)
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'))
+    date_of_maintenance = db.Column(db.Date)
     type = db.Column(db.String(50))
     description = db.Column(db.String(255))
 
+    # Relationships
+    asset = db.relationship('Asset', back_populates='maintenances')
+
 class Transaction(db.Model, SerializerMixin):
     __tablename__ = 'transaction'
-    transactionid = db.Column(db.Integer, primary_key=True)
-    assetID = db.Column(db.Integer, db.ForeignKey('asset.assetID'))
-    transactionDate = db.Column(db.Date)
-    transactiontype = db.Column(db.String(50))
+    transaction_id = db.Column(db.Integer, primary_key=True)
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'))
+    transaction_date = db.Column(db.Date)
+    transaction_type = db.Column(db.String(50))
+
+    # Relationships
+    asset = db.relationship('Asset', back_populates='transactions')
 
 class Requests(db.Model, SerializerMixin):
     __tablename__ = 'requests'
     serialize_rules = ('-user.requests',)
-    requestID = db.Column(db.Integer, primary_key=True)
-    userid = db.Column(db.Integer, db.ForeignKey('user.userid'))
+    request_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     description = db.Column(db.String(255))
     status = db.Column(db.String(50))
-    assetName = db.Column(db.String(255))
+    asset_name = db.Column(db.String(255))
 
-    user = db.relationship('User', backref='requests')
+    # Relationships
+    user = db.relationship('User', back_populates='requests')

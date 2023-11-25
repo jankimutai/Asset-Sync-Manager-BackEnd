@@ -1,11 +1,11 @@
-from config import db, bcrypt
+from config import app,db, bcrypt
 from models import Asset, User, Assignment, Maintenance, Transaction, Requests
 from faker import Faker
 from random import choice as rc
 
 fake = Faker()
 
-with db.app.app_context():
+with app.app_context():
     Asset.query.delete()
     User.query.delete()
     Assignment.query.delete()
@@ -20,11 +20,11 @@ with db.app.app_context():
 
     for i in range(50):
         asset = Asset(
-            assetName=fake.word(),
+            asset_name=fake.word(),
             model=fake.word(),
-            imageUrl=fake.image_url(),  
-            manufacturer=fake.word(),
-            datePurchased=fake.date_time(),
+            image_url=fake.image_url(),  
+            manufacturer=fake.company(),
+            date_purchased=fake.date_time(),
             status=rc(['Active', 'Pending', 'Under Maintenance']),
             category=fake.word()
         )
@@ -42,12 +42,12 @@ with db.app.app_context():
         hashed_password = bcrypt.generate_password_hash(fake_password).decode('utf-8')
 
         user = User(
-            fullName=fake.name(),
+            full_name=fake.name(),
             username=fake.user_name(),
             email=fake.email(),
-            password_hash=hashed_password,
+            _password_hash=hashed_password,
             role=fake.word(),
-            department=fake.word()
+            department=rc(["Marketing","Finance","Human Resource","Management","Operations","Audit","IT"])
         )
 
         users.append(user)
@@ -56,66 +56,59 @@ with db.app.app_context():
 
     print('Generating users')
 
-    assignments = []
 
-    for _ in range(20):
+    for _ in range(30):
         assignment = Assignment(
-            asset=rc(assets),
-            user=rc(users),
-            assignmentDate=fake.date_time(),
-            returnDate=fake.date_time()
-        )
+            asset=Asset.query.order_by(db.func.random()).first(),
+            user=User.query.order_by(db.func.random()).first(),
+            assignment_date=fake.date_between(start_date="-30d", end_date="today"),
+            return_date=fake.date_between(start_date="today", end_date="+30d"),
+    )
+        db.session.add(assignment)
+    db.session.commit()
 
-        assignments.append(assignment)
-        db.session.add_all(assignments)
-        db.session.commit()
+
+       
 
     print('Generating assignments')
 
-    maintenances = []
-
-    for _ in range(15):
+    for _ in range(30):
+        
         maintenance = Maintenance(
-            asset=rc(assets),
-            dateofmaintenance=fake.date_time(),
+            asset=Asset.query.order_by(db.func.random()).first(),
+            date_of_maintenance=fake.date_between(start_date="-30d", end_date="today"),
             type=fake.word(),
-            description=fake.text()
+            description=fake.text(),
         )
 
-        maintenances.append(maintenance)
-        db.session.add_all(maintenances)
+        
+        db.session.add(maintenance)
         db.session.commit()
+
 
     print('Generating maintenance records')
 
 
-    transactions = []
-
-    for _ in range(30):
+    for _ in range(20):
+        
         transaction = Transaction(
-            asset=rc(assets),
-            transactionDate=fake.date_time(),
-            transactiontype=fake.word()
+            asset=Asset.query.order_by(db.func.random()).first(),
+            transaction_date=fake.date_between(start_date="-30d", end_date="today"),
+            transaction_type=fake.word(),
         )
-
-        transactions.append(transaction)
-        db.session.add_all(transactions)
+        db.session.add(transaction)
         db.session.commit()
 
     print('Generating transactions')
 
-    requests = []
-
-    for _ in range(10):
+    for _ in range(21):
         request = Requests(
-            user=rc(users),
+            user=User.query.order_by(db.func.random()).first(),
             description=fake.text(),
-            status=rc(['Pending', 'Approved', 'Rejected']),
-            assetName=fake.word()
+            status=fake.random_element(elements=("Pending", "Approved", "Rejected")),
+            asset_name=fake.word(),
         )
-
-        requests.append(request)
-        db.session.add_all(requests)
+        db.session.add(request)
         db.session.commit()
 
     print('Generating requests')

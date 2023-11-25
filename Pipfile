@@ -11,6 +11,9 @@ flask-sqlalchemy = "*"
 flask-migrate = "*"
 sqlalchemy-serializer = "*"
 flask-restful = "*"
+flask-bcrypt = "*"
+flask-cors = "*"
+faker = "*"
 
 [dev-packages]
 
