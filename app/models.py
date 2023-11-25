@@ -35,8 +35,6 @@ class User(db.Model, SerializerMixin):
     username = db.Column(db.String(50), unique=True, nullable=False)
     email = db.Column(db.String(255), nullable=False)
     _password_hash = db.Column('password_hash', db.String(255), nullable=False)
-    password = db.Column(db.String(100))
-
     role = db.Column(db.String(50))
     department = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
