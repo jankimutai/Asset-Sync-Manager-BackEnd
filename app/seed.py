@@ -18,7 +18,7 @@ with app.app_context():
     
     assets =[]
 
-    for i in range(50):
+    for i in range(30):
         asset = Asset(
             asset_name=fake.word(),
             model=fake.word(),
@@ -37,7 +37,7 @@ with app.app_context():
 
     users = []
 
-    for i in range(30):
+    for i in range(4):
         fake_password = fake.password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True)
         hashed_password = bcrypt.generate_password_hash(fake_password).decode('utf-8')
 
@@ -57,7 +57,7 @@ with app.app_context():
     print('Generating users')
 
 
-    for _ in range(30):
+    for _ in range(12):
         assignment = Assignment(
             asset=Asset.query.order_by(db.func.random()).first(),
             user=User.query.order_by(db.func.random()).first(),
@@ -72,7 +72,7 @@ with app.app_context():
 
     print('Generating assignments')
 
-    for _ in range(30):
+    for _ in range(11):
         
         maintenance = Maintenance(
             asset=Asset.query.order_by(db.func.random()).first(),
@@ -89,7 +89,7 @@ with app.app_context():
     print('Generating maintenance records')
 
 
-    for _ in range(20):
+    for _ in range(21):
         
         transaction = Transaction(
             asset=Asset.query.order_by(db.func.random()).first(),
@@ -101,7 +101,7 @@ with app.app_context():
 
     print('Generating transactions')
 
-    for _ in range(21):
+    for _ in range(4):
         request = Requests(
             user=User.query.order_by(db.func.random()).first(),
             description=fake.text(),

@@ -5,9 +5,9 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from datetime import datetime
 
 class Asset(db.Model, SerializerMixin):
-    __tablename__ = 'asset'
+    __tablename__ = 'asset_table'
 
-    serialize_rules = ('-assignments.asset', '-maintenances.asset', '-transactions.asset')
+    serialize_rules = ('-assignments.asset', '-maintenances.asset', '-transactions.asset',)
 
     id = db.Column(db.Integer, primary_key=True)
     asset_name = db.Column(db.String(255), nullable=False)
@@ -22,7 +22,7 @@ class Asset(db.Model, SerializerMixin):
     # Relationships
     assignments = db.relationship('Assignment', back_populates='asset')
     maintenances = db.relationship('Maintenance', back_populates='asset')
-    transactions = db.relationship('Transaction', back_populates='asset')
+    transactions = db.relationship('Transaction', back_populates='asset', uselist=False)
 
     @validates('status')
     def validate_status(self, _, value):
@@ -33,7 +33,8 @@ class Asset(db.Model, SerializerMixin):
 class User(db.Model, SerializerMixin):
     __tablename__ = 'user'
 
-    serialize_rules = ('-assignments.user', '-requests.user')
+    serialize_rules = ('-assignments.user', '-requests.user', "-_password_hash",)
+  
     id = db.Column(db.Integer, primary_key=True)
     full_name = db.Column(db.String(255), nullable=False)
     username = db.Column(db.String(50), unique=True, nullable=False)
@@ -53,8 +54,11 @@ class User(db.Model, SerializerMixin):
 
     @password_hash.setter
     def password_hash(self, password):
-        password_hash = bcrypt.generate_password_hash(password.encode('utf-8'))
-        self._password_hash = password_hash.decode('utf-8')
+        if password is not None:
+            password_hash = bcrypt.generate_password_hash(password.encode('utf-8'))
+            self._password_hash = password_hash.decode('utf-8')
+        else:
+            raise ValueError('Password cannot be None')
 
     def authenticate(self, password):
         return bcrypt.check_password_hash(self._password_hash, password.encode('utf-8'))
@@ -69,7 +73,7 @@ class Assignment(db.Model, SerializerMixin):
     __tablename__ = 'assignment'
 
     id = db.Column(db.Integer, primary_key=True)
-    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'))
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset_table.id'))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     assignment_date = db.Column(db.Date)
     return_date = db.Column(db.Date)
@@ -78,12 +82,18 @@ class Assignment(db.Model, SerializerMixin):
     asset = db.relationship('Asset', back_populates='assignments')
     user = db.relationship('User', back_populates='assignments')
 
+    # Serialization rules
+    serialize_rules = ('-asset.assignments', '-user.assignments',)
+
+   
+
 class Maintenance(db.Model, SerializerMixin):
     __tablename__ = 'maintenance'
+
     serialize_rules = ('-asset.maintenances',)
     
     maintenance_id = db.Column(db.Integer, primary_key=True)
-    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'))
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset_table.id'))
     date_of_maintenance = db.Column(db.Date)
     type = db.Column(db.String(50))
     description = db.Column(db.String(255))
@@ -93,17 +103,20 @@ class Maintenance(db.Model, SerializerMixin):
 
 class Transaction(db.Model, SerializerMixin):
     __tablename__ = 'transaction'
+
+    serialize_rules = ('-asset.transactions',)
+
     transaction_id = db.Column(db.Integer, primary_key=True)
-    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'))
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset_table.id'), unique=True)
     transaction_date = db.Column(db.Date)
     transaction_type = db.Column(db.String(50))
 
-    # Relationships
+    # Relationship
     asset = db.relationship('Asset', back_populates='transactions')
-
 class Requests(db.Model, SerializerMixin):
     __tablename__ = 'requests'
     serialize_rules = ('-user.requests',)
+
     request_id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     description = db.Column(db.String(255))
