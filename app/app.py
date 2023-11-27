@@ -12,6 +12,7 @@ api.add_resource(Home,"/")
 class Login(Resource):
    def post(self):
         parser = reqparse.RequestParser()
+
         parser.add_argument('email', type=str, required=True, help='Email is required')
         parser.add_argument('password', type=str, required=True, help='Password is required')
         args = parser.parse_args()
@@ -19,13 +20,15 @@ class Login(Resource):
         user = User.query.filter_by(email=args['email']).first()
 
         if user and user.authenticate(args['password']):
-            return {'message': 'Login successful'}, 200
+            session["user_id"]=user.id
+            return make_response(jsonify({'message': 'Login successful'}, 200))
         else:
-            return {'error': 'Invalid username or password'}, 401
+            return make_response(jsonify({'error': 'Invalid username or password'}, 401))
 api.add_resource(Login,"/login")
 class Registration(Resource):
    def post(self):
         parser = reqparse.RequestParser()
+
         parser.add_argument('full_name', type=str, required=True, help='Full name is required')
         parser.add_argument('username', type=str, required=True, help='Username is required')
         parser.add_argument('email', type=str, required=True, help='Email is required')
