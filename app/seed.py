@@ -23,7 +23,7 @@ with app.app_context():
 
     it_equipments = []
 
-    for i in range(30):
+    for i in range(40):
         category = rc(['Laptop', 'Desktop', 'Server', 'Router'])
 
         if category == 'Laptop':
@@ -60,7 +60,7 @@ with app.app_context():
 
     users = []
 
-    for i in range(4):
+    for i in range(13):
         fake_password = fake.password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True)
         hashed_password = bcrypt.generate_password_hash(fake_password).decode('utf-8')
 
@@ -81,7 +81,7 @@ with app.app_context():
     print('Generating users')
 
     assigned_assets = set()
-    for _ in range(12):
+    for _ in range(30):
         available_assets = Asset.query.filter(Asset.id.notin_(assigned_assets)).all()
         if not available_assets:
             break  # No more available assets to assign
@@ -125,57 +125,50 @@ with app.app_context():
     transaction_types = ['Purchase', 'Transfer', 'Maintenance', 'Sale']
     sold_assets = set()  # Keep track of assets that have been sold
 
-    for _ in range(21):
+    for _ in range(30):
         transaction_type = rc(transaction_types)
-        available_assets = Asset.query.filter(Asset.id.notin_(sold_assets)).all()
-
         asset = rc(available_assets) if available_assets else None
+        if asset:
+            existing_transaction = Transaction.query.filter_by(asset_id=asset.id).first()
+            
+            if not existing_transaction:
+                if transaction_type == 'Purchase':
+                    if asset:
+                        asset.quantity += fake.random_int(min=1, max=10)
+                    else:
+                        asset = Asset(
+                            model=model_name.split()[0],
+                            asset_name=model_name,
+                            date_purchased=datetime.utcnow(),
+                            image_url=fake.image_url(),
+                            manufacturer=fake.company(),
+                            created_at=fake.date_time(),
+                            status=rc(['Active', 'Pending', 'Under Maintenance']),
+                            category=category,
+                            quantity=fake.random_int(min=1, max=30)
+                        )
+                        db.session.add(asset)
 
-        if transaction_type == 'Purchase':
-            if asset:
-                asset.quantity += fake.random_int(min=1, max=10)
-            else:
-                asset = Asset(
-                    model=model_name.split()[0],
-                    asset_name=model_name,
-                    date_purchased=datetime.utcnow(),
-                    image_url=fake.image_url(),
-                    manufacturer=fake.company(),
-                    created_at=fake.date_time(),
-                    status=rc(['Active', 'Pending', 'Under Maintenance']),
-                    category=category,
-                    quantity=fake.random_int(min=1, max=30)
-                )
-                db.session.add(asset)
+                elif transaction_type == 'Sale':
+                    if asset.quantity > 0:
+                        asset.quantity -= fake.random_int(min=1, max=asset.quantity)
+                        sold_assets.add(asset.id)
 
-        elif transaction_type == 'Sale':
-            if asset and asset.quantity > 0:
-                asset.quantity -= fake.random_int(min=1, max=asset.quantity)
-                sold_assets.add(asset.id)
+                elif transaction_type == 'Maintenance':
+                    existing_maintenance = Maintenance.query.filter_by(asset_id=asset.id).first()
+                    if not existing_maintenance:
+                        maintenance = Maintenance(
+                            asset_id=asset.id,
+                            date_of_maintenance=fake.date_between(start_date="-2y", end_date="today"),
+                            type=rc(['Scheduled', 'Unscheduled']),
+                            description=fake.text(),
+                        )
+                        db.session.add(maintenance)
+                        # Update the asset status to 'Under Maintenance'
+                        asset.status = 'Under Maintenance'
 
-        elif transaction_type == 'Maintenance':
-            if asset:
-                existing_maintenance = Maintenance.query.filter_by(asset_id=asset.id).first()
-
-                if not existing_maintenance:
-                    maintenance = Maintenance(
-                        asset_id=asset.id,
-                        date_of_maintenance=fake.date_between(start_date="-2y", end_date="today"),
-                        type=rc(['Scheduled', 'Unscheduled']),
-                        description=fake.text(),
-                    )
-                    db.session.add(maintenance)
-
-                    # Update the asset status to 'Under Maintenance'
-                    asset.status = 'Under Maintenance'
-
-        elif transaction_type == 'Transfer':
-            if asset:
-                existing_transaction = Transaction.query.filter_by(asset_id=asset.id).first()
-
-                if not existing_transaction:
+                elif transaction_type == 'Transfer':
                     new_user = User.query.order_by(db.func.random()).first()
-
                     existing_assignment = Assignment.query.filter_by(asset_id=asset.id).first()
 
                     if existing_assignment:
@@ -190,26 +183,15 @@ with app.app_context():
                             return_date=fake.date_between(start_date="today", end_date="+1y"),
                         )
                         db.session.add(new_assignment)
-
-            
-        if asset:
-            transaction = Transaction(
-                asset=asset,
-                transaction_type=transaction_type,
-                transaction_date=fake.date_between(start_date="-1y", end_date="today"),
+                
+                # Add a new transaction entry
+                transaction = Transaction(
+                    asset=asset,
+                    transaction_type=transaction_type,
+                    transaction_date=fake.date_between(start_date="-1y", end_date="today"),
                 )
-            db.session.add(transaction)
-        db.session.commit()
-
-    # Common block for all transaction types
-    if asset:
-        transaction = Transaction(
-            asset=asset,
-            transaction_type=transaction_type,
-            transaction_date=fake.date_between(start_date="-1y", end_date="today"),
-        )
-        db.session.add(transaction)
-
+                db.session.add(transaction)
+            
     db.session.commit()
  
 

@@ -107,7 +107,7 @@ class Transaction(db.Model, SerializerMixin):
     serialize_rules = ('-asset.transactions',)
 
     transaction_id = db.Column(db.Integer, primary_key=True)
-    asset_id = db.Column(db.Integer, db.ForeignKey('asset_table.id'),nullable=False)
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset_table.id'),nullable=False,unique=True)
     transaction_type = db.Column(db.String(50))
     transaction_date = db.Column(db.Date)
     # Relationship
