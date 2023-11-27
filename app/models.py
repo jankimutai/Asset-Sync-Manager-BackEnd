@@ -12,17 +12,18 @@ class Asset(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     asset_name = db.Column(db.String(255), nullable=False)
     model = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    date_purchased = db.Column(db.DateTime, default=datetime.utcnow)
     image_url = db.Column(db.String(255))
     manufacturer = db.Column(db.String(255))
-    date_purchased = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(50))
     category = db.Column(db.String(50))
+    quantity=db.Column(db.Integer())
     
     # Relationships
     assignments = db.relationship('Assignment', back_populates='asset')
     maintenances = db.relationship('Maintenance', back_populates='asset')
-    transactions = db.relationship('Transaction', back_populates='asset', uselist=False)
+    transactions = db.relationship('Transaction', back_populates='asset')
 
     @validates('status')
     def validate_status(self, _, value):
@@ -33,7 +34,7 @@ class Asset(db.Model, SerializerMixin):
 class User(db.Model, SerializerMixin):
     __tablename__ = 'user'
 
-    serialize_rules = ('-assignments.user', '-requests.user', "-_password_hash",)
+    serialize_rules = ('-assignments.user', '-requests.user', "-_password_hash","-id","-email","-username",)
   
     id = db.Column(db.Integer, primary_key=True)
     full_name = db.Column(db.String(255), nullable=False)
@@ -42,7 +43,7 @@ class User(db.Model, SerializerMixin):
     _password_hash = db.Column('password_hash', db.String(255), nullable=False)
     role = db.Column(db.String(50))
     department = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    employed_on = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
     assignments = db.relationship('Assignment', back_populates='user')
@@ -73,7 +74,7 @@ class Assignment(db.Model, SerializerMixin):
     __tablename__ = 'assignment'
 
     id = db.Column(db.Integer, primary_key=True)
-    asset_id = db.Column(db.Integer, db.ForeignKey('asset_table.id'))
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset_table.id'),nullable=False,unique=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     assignment_date = db.Column(db.Date)
     return_date = db.Column(db.Date)
@@ -85,7 +86,6 @@ class Assignment(db.Model, SerializerMixin):
     # Serialization rules
     serialize_rules = ('-asset.assignments', '-user.assignments',)
 
-   
 
 class Maintenance(db.Model, SerializerMixin):
     __tablename__ = 'maintenance'
@@ -93,7 +93,7 @@ class Maintenance(db.Model, SerializerMixin):
     serialize_rules = ('-asset.maintenances',)
     
     maintenance_id = db.Column(db.Integer, primary_key=True)
-    asset_id = db.Column(db.Integer, db.ForeignKey('asset_table.id'))
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset_table.id'),nullable=False,unique=True)
     date_of_maintenance = db.Column(db.Date)
     type = db.Column(db.String(50))
     description = db.Column(db.String(255))
@@ -107,21 +107,26 @@ class Transaction(db.Model, SerializerMixin):
     serialize_rules = ('-asset.transactions',)
 
     transaction_id = db.Column(db.Integer, primary_key=True)
-    asset_id = db.Column(db.Integer, db.ForeignKey('asset_table.id'), unique=True)
-    transaction_date = db.Column(db.Date)
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset_table.id'),nullable=False)
     transaction_type = db.Column(db.String(50))
-
+    transaction_date = db.Column(db.Date)
     # Relationship
     asset = db.relationship('Asset', back_populates='transactions')
+
 class Requests(db.Model, SerializerMixin):
     __tablename__ = 'requests'
     serialize_rules = ('-user.requests',)
 
     request_id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    description = db.Column(db.String(255))
-    status = db.Column(db.String(50))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'),nullable=False)
+    
     asset_name = db.Column(db.String(255))
+    description = db.Column(db.String(255))
+    quantity=db.Column(db.Integer())
+    urgency=db.Column(db.String)
+    status = db.Column(db.String(50))
+
+
 
     # Relationships
     user = db.relationship('User', back_populates='requests')
