@@ -1,6 +1,4 @@
 app/__pycache__/
-app/app.py
-app/instance/assets.db
-app/migrations/__pycache__/
-app/migrations/versions/*.py
-app/migrations/versions/__pycache__/
+app/instance/
+app/migrations/
+
