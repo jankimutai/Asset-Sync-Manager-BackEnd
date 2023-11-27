@@ -18,7 +18,7 @@ class Asset(db.Model, SerializerMixin):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(50))
     category = db.Column(db.String(50))
-    quantity=db.Column(db.Integer())
+    serial_number=db.Column(db.Integer())
     
     # Relationships
     assignments = db.relationship('Assignment', back_populates='asset')
@@ -97,6 +97,8 @@ class Maintenance(db.Model, SerializerMixin):
     date_of_maintenance = db.Column(db.Date)
     type = db.Column(db.String(50))
     description = db.Column(db.String(255))
+    cost = db.Column(db.Float)
+    completion_status = db.Column(db.String(20))
 
     # Relationships
     asset = db.relationship('Asset', back_populates='maintenances')

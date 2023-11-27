@@ -1,7 +1,7 @@
 from config import app,db, bcrypt
 from models import Asset, User, Assignment, Maintenance, Transaction, Requests
 from faker import Faker
-from random import choice as rc
+from random import choice as rc,randint
 from datetime import datetime
 fake = Faker()
 
@@ -48,7 +48,7 @@ with app.app_context():
             created_at=fake.date_time(),
             status=rc(['Active', 'Pending', 'Under Maintenance']),
             category=category,
-            quantity=fake.random_int(min=1, max=30)
+            serial_number=f"{model_name.split()[0]}_{randint(100000000, 999999999)}"
         )
 
         it_equipments.append(equipment_instance)
@@ -61,17 +61,23 @@ with app.app_context():
     users = []
 
     for i in range(13):
-        fake_password = fake.password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True)
-        hashed_password = bcrypt.generate_password_hash(fake_password).decode('utf-8')
+        
+
+        role = rc(['Normal Employee', 'Admin', 'Procurement Manager'])
+        
+        if role in ['Admin', 'Procurement Manager']:
+            department = 'Management'
+        else:
+            department = rc(["Marketing", "Finance", "Human Resource", "Management", "Operations", "Audit", "IT"])
 
         user = User(
             full_name=fake.name(),
             username=fake.user_name(),
             email=fake.email(),
-            _password_hash=hashed_password,
+            _password_hash = bcrypt.generate_password_hash(fake.password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True)).decode('utf-8'),
             employed_on=fake.date_between(start_date="-2y", end_date="today"),
-            role=rc(['Normal Employee', 'Admin', 'Procurement Manager']),
-            department=rc(["Marketing","Finance","Human Resource","Management","Operations","Audit","IT"])
+            role=role,
+            department=department  
         )
 
         users.append(user)
@@ -81,7 +87,7 @@ with app.app_context():
     print('Generating users')
 
     assigned_assets = set()
-    for _ in range(30):
+    for _ in range(20):
         available_assets = Asset.query.filter(Asset.id.notin_(assigned_assets)).all()
         if not available_assets:
             break  # No more available assets to assign
@@ -99,7 +105,7 @@ with app.app_context():
     print('Generating assignments')
     
     assets_under_maintenance = set()
-    for _ in range(21):
+    for _ in range(10):
         available_assets = Asset.query.filter(Asset.id.notin_(assets_under_maintenance)).all()
 
         if not available_assets:
@@ -113,6 +119,8 @@ with app.app_context():
             date_of_maintenance=fake.date_between(start_date="-2y", end_date="today"),
             type=rc(['Scheduled', 'Unscheduled']),
             description=fake.text(),
+            cost=randint(3000, 20000),
+            completion_status=rc(['Pending', 'Completed'])
         )
         db.session.add(maintenance)
 
@@ -125,7 +133,7 @@ with app.app_context():
     transaction_types = ['Purchase', 'Transfer', 'Maintenance', 'Sale']
     sold_assets = set()  # Keep track of assets that have been sold
 
-    for _ in range(30):
+    for _ in range(14):
         transaction_type = rc(transaction_types)
         asset = rc(available_assets) if available_assets else None
         if asset:
@@ -134,7 +142,7 @@ with app.app_context():
             if not existing_transaction:
                 if transaction_type == 'Purchase':
                     if asset:
-                        asset.quantity += fake.random_int(min=1, max=10)
+                        pass
                     else:
                         asset = Asset(
                             model=model_name.split()[0],
@@ -148,11 +156,6 @@ with app.app_context():
                             quantity=fake.random_int(min=1, max=30)
                         )
                         db.session.add(asset)
-
-                elif transaction_type == 'Sale':
-                    if asset.quantity > 0:
-                        asset.quantity -= fake.random_int(min=1, max=asset.quantity)
-                        sold_assets.add(asset.id)
 
                 elif transaction_type == 'Maintenance':
                     existing_maintenance = Maintenance.query.filter_by(asset_id=asset.id).first()
@@ -193,10 +196,6 @@ with app.app_context():
                 db.session.add(transaction)
             
     db.session.commit()
- 
-
-
-
     print('Generating transactions')
 
     asset_names = ['Laptop', 'Desktop', 'Printer', 'Scanner', 'Projector', 'Phone', 'Tablet']
