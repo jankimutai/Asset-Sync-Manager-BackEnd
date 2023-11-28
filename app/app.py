@@ -6,7 +6,7 @@ from models import Asset, User, Assignment, Maintenance, Transaction, Requests
 import datetime
 class Home(Resource):
     def get(self):
-        response =make_response(jsonify({"message":"Welcome to Asset-Sync-Manager-Backend"}))
+        response =make_response(jsonify({"message":"Welcome to Asset-Sync-Manager-Backend"}), 200)
         return response
     
 api.add_resource(Home,"/")
@@ -22,9 +22,10 @@ class Login(Resource):
 
         if user and user.authenticate(args['password']):
             session["user_id"]=user.id
-            return make_response(jsonify({'message': 'Login successful'}, 200))
+            session["user_role"] = user.role
+            return make_response(jsonify({'message': 'Login successful'}), 201)
         else:
-            return make_response(jsonify({'error': 'Invalid username or password'}, 401))
+            return make_response(jsonify({'error': 'Invalid username or password'}), 401)
 api.add_resource(Login,"/login")
 class Registration(Resource):
    def post(self):
@@ -89,6 +90,7 @@ class Assets(Resource):
             image_url=data.get('image_url'),
             manufacturer=data.get('manufacturer'),
             date_purchased=data.get('date_purchased'),
+            purchase_cost= data.get("purchase_cost"),
             status=data.get('status'),
             category=data.get('category'),
             serial_number=data.get('serial_number')
@@ -121,6 +123,7 @@ class AssetById(Resource):
         asset.image_url = data.get('image_url', asset.image_url)
         asset.manufacturer = data.get('manufacturer', asset.manufacturer)
         asset.date_purchased = data.get('date_purchased', asset.date_purchased)
+        asset.purchase_cost=data.get("purchase_cost", asset.purchase_cost)
         asset.status = data.get('status', asset.status)
         asset.category = data.get('category', asset.category)
         asset.serial_number=data.get('category',asset.serial_number)
@@ -339,13 +342,18 @@ class MaintenanceResource(Resource):
         parser.add_argument('date_of_maintenance', type=str, help='Date of maintenance', required=True)
         parser.add_argument('type', type=str, help='Maintenance type', required=True)
         parser.add_argument('description', type=str, help='Maintenance description')
-
+        parser.add_argument("maintainance_status",type=str,help="Maintenance status Needed")
         args = parser.parse_args()
         
+
 
         if not maintenance:
             response = make_response(jsonify({'error': 'Maintenance not found'}), 404)
             return response
+        
+   
+        asset = Asset.query.filter_by(id=maintenance.asset_id).first()
+        asset.status = 'Write-off'
 
         maintenance.asset_id = args['asset_id']
         maintenance.date_of_maintenance = datetime.strptime(args['date_of_maintenance'], '%Y-%m-%d').date()
@@ -362,9 +370,7 @@ class MaintenanceResource(Resource):
             response = make_response(jsonify({'error': 'Maintenance not found'}), 404)
             return response
 
-        # Update the associated Asset status to 'Available' when maintenance is deleted
-        asset = Asset.query.filter_by(id=maintenance.asset_id).first()
-        asset.status = 'Active'
+        
 
         db.session.delete(maintenance)
         db.session.commit()
