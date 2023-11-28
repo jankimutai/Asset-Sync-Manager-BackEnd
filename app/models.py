@@ -13,6 +13,7 @@ class Asset(db.Model, SerializerMixin):
     asset_name = db.Column(db.String(255), nullable=False)
     model = db.Column(db.String(255), nullable=False)
     date_purchased = db.Column(db.DateTime, default=datetime.utcnow)
+    purchase_cost=db.Column(db.Float())
     image_url = db.Column(db.String(255))
     manufacturer = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -34,7 +35,7 @@ class Asset(db.Model, SerializerMixin):
 class User(db.Model, SerializerMixin):
     __tablename__ = 'user'
 
-    serialize_rules = ('-assignments.user', '-requests.user', "-_password_hash","-id","-email","-username",)
+    serialize_rules = ('-assignments.user', '-requests.user', "-id","-_password_hash", "-email", "-username", "-department", "-employed_on", "-full_name", "-role",)
   
     id = db.Column(db.Integer, primary_key=True)
     full_name = db.Column(db.String(255), nullable=False)
@@ -84,7 +85,7 @@ class Assignment(db.Model, SerializerMixin):
     user = db.relationship('User', back_populates='assignments')
 
     # Serialization rules
-    serialize_rules = ('-asset.assignments', '-user.assignments',)
+    serialize_rules = ('-asset.assignments', '-user.assignments',"-user_id",)
 
 
 class Maintenance(db.Model, SerializerMixin):
@@ -117,7 +118,7 @@ class Transaction(db.Model, SerializerMixin):
 
 class Requests(db.Model, SerializerMixin):
     __tablename__ = 'requests'
-    serialize_rules = ('-user.requests',)
+    serialize_rules = ('-user.requests',"-user_id",)
 
     request_id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'),nullable=False)

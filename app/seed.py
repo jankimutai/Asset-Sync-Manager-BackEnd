@@ -43,6 +43,7 @@ with app.app_context():
             model=model_name.split()[0],
             asset_name=model_name,
             date_purchased=datetime.utcnow(),
+            purchase_cost=randint(1000,99999),
             image_url=image_url,
             manufacturer=manufacturer,
             created_at=fake.date_time(),
