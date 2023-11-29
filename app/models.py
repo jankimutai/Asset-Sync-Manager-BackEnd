@@ -16,7 +16,7 @@ class Asset(db.Model, SerializerMixin):
     purchase_cost=db.Column(db.Float())
     image_url = db.Column(db.String(255))
     manufacturer = db.Column(db.String(255))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    added_on = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(50))
     category = db.Column(db.String(50))
     serial_number=db.Column(db.Integer())
@@ -28,14 +28,14 @@ class Asset(db.Model, SerializerMixin):
 
     @validates('status')
     def validate_status(self, _, value):
-        if value not in ['Active', 'Pending', 'Under Maintenance']:
-            raise ValueError(f"Invalid status: {value}. Must be 'Active', 'Pending', or 'Under Maintenance'.")
+        if value not in ['Active', 'Pending', 'Under Maintenance',"Sold"]:
+            raise ValueError(f"Invalid status: {value}. Must be 'Active', 'Pending','Sold' or 'Under Maintenance'.")
         return value
 
 class User(db.Model, SerializerMixin):
     __tablename__ = 'user'
 
-    serialize_rules = ('-assignments.user', '-requests.user', "-id","-_password_hash", "-email", "-username", "-department", "-employed_on", "-full_name", "-role",)
+    serialize_rules = ('-assignments.user', '-requests.user',"-_password_hash", "-email", "-department", "-employed_on",)
   
     id = db.Column(db.Integer, primary_key=True)
     full_name = db.Column(db.String(255), nullable=False)

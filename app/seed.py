@@ -1,3 +1,4 @@
+from psycopg2 import IntegrityError
 from config import app,db, bcrypt
 from models import Asset, User, Assignment, Maintenance, Transaction, Requests
 from faker import Faker
@@ -23,7 +24,7 @@ with app.app_context():
 
     it_equipments = []
 
-    for i in range(40):
+    for i in range(45):
         category = rc(['Laptop', 'Desktop', 'Server', 'Router'])
 
         if category == 'Laptop':
@@ -42,11 +43,11 @@ with app.app_context():
         equipment_instance = Asset(
             model=model_name.split()[0],
             asset_name=model_name,
-            date_purchased=datetime.utcnow(),
+            date_purchased=fake.date_between(start_date="-3y", end_date="today"),
             purchase_cost=randint(1000,99999),
             image_url=image_url,
             manufacturer=manufacturer,
-            created_at=fake.date_time(),
+            added_on=fake.date_time(),
             status=rc(['Active', 'Pending', 'Under Maintenance']),
             category=category,
             serial_number=f"{model_name.split()[0]}_{randint(100000000, 999999999)}"
@@ -88,7 +89,7 @@ with app.app_context():
     print('Generating users')
 
     assigned_assets = set()
-    for _ in range(20):
+    for _ in range(34):
         available_assets = Asset.query.filter(Asset.id.notin_(assigned_assets)).all()
         if not available_assets:
             break  # No more available assets to assign
@@ -106,7 +107,8 @@ with app.app_context():
     print('Generating assignments')
     
     assets_under_maintenance = set()
-    for _ in range(10):
+
+    for _ in range(20):
         available_assets = Asset.query.filter(Asset.id.notin_(assets_under_maintenance)).all()
 
         if not available_assets:
@@ -121,43 +123,47 @@ with app.app_context():
             type=rc(['Scheduled', 'Unscheduled']),
             description=fake.text(),
             cost=randint(3000, 20000),
-            completion_status=rc(['Pending', 'Completed'])
+            completion_status=rc(['Incomplete', 'Complete'])
         )
         db.session.add(maintenance)
 
-        # Update the asset status to 'Under Maintenance'
-        maintenance_asset.status = 'Under Maintenance'
-
-    db.session.commit()
-    print('Generating maintenance records')
+        if maintenance.completion_status == 'Completed':
+            # Update the asset status to 'Active' if maintenance is completed
+            maintenance_asset.status = 'Active'
+        else:
+            # Update the asset status to 'Under Maintenance' if maintenance is pending
+            maintenance_asset.status = 'Under Maintenance'
 
     transaction_types = ['Purchase', 'Transfer', 'Maintenance', 'Sale']
     sold_assets = set()  # Keep track of assets that have been sold
 
-    for _ in range(14):
+    for _ in range(23):
         transaction_type = rc(transaction_types)
         asset = rc(available_assets) if available_assets else None
+
         if asset:
             existing_transaction = Transaction.query.filter_by(asset_id=asset.id).first()
-            
+
             if not existing_transaction:
                 if transaction_type == 'Purchase':
-                    if asset:
-                        pass
-                    else:
+                    if not asset:
+                        purchase_category = rc(['Laptop', 'Desktop', 'Server', 'Router'])
                         asset = Asset(
                             model=model_name.split()[0],
                             asset_name=model_name,
-                            date_purchased=datetime.utcnow(),
+                            date_purchased=fake.date_between(start_date="-1y", end_date="today"),
                             image_url=fake.image_url(),
                             manufacturer=fake.company(),
                             created_at=fake.date_time(),
-                            status=rc(['Active', 'Pending', 'Under Maintenance']),
-                            category=category,
-                            quantity=fake.random_int(min=1, max=30)
+                            status="Active",
+                            category=purchase_category,
                         )
                         db.session.add(asset)
-
+                elif transaction_type == 'Sale':
+                    if asset:
+                        existing_asset = Asset.query.filter_by(id=asset.id).first()
+                        if existing_asset:
+                            asset.status = 'Sold'
                 elif transaction_type == 'Maintenance':
                     existing_maintenance = Maintenance.query.filter_by(asset_id=asset.id).first()
                     if not existing_maintenance:
@@ -166,6 +172,8 @@ with app.app_context():
                             date_of_maintenance=fake.date_between(start_date="-2y", end_date="today"),
                             type=rc(['Scheduled', 'Unscheduled']),
                             description=fake.text(),
+                            cost=randint(3000, 20000),
+                            completion_status= 'Completed'
                         )
                         db.session.add(maintenance)
                         # Update the asset status to 'Under Maintenance'
@@ -187,27 +195,34 @@ with app.app_context():
                             return_date=fake.date_between(start_date="today", end_date="+1y"),
                         )
                         db.session.add(new_assignment)
-                
-                # Add a new transaction entry
+
+                # Create a new transaction entry
                 transaction = Transaction(
                     asset=asset,
                     transaction_type=transaction_type,
                     transaction_date=fake.date_between(start_date="-1y", end_date="today"),
                 )
                 db.session.add(transaction)
+
+        try:
+            db.session.commit()
+        except IntegrityError as e:
+            db.session.rollback()
+            print(f"Error: {str(e)}")
+
             
     db.session.commit()
     print('Generating transactions')
 
     asset_names = ['Laptop', 'Desktop', 'Printer', 'Scanner', 'Projector', 'Phone', 'Tablet']
-    for _ in range(20):
+    for _ in range(30):
         request = Requests(
             user=User.query.order_by(db.func.random()).first(),
             asset_name=rc(asset_names),
             description=fake.text(),
             quantity=fake.random_int(min=1, max=13),
             urgency=rc(['High', 'Medium', 'Low']),
-            status="Pending"
+            status= rc(["Pending","Approved","Rejected"])
         )
         db.session.add(request)
     db.session.commit()

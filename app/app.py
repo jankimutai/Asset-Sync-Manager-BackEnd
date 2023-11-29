@@ -16,6 +16,7 @@ class Login(Resource):
 
         parser.add_argument('email', type=str, required=True, help='Email is required')
         parser.add_argument('password', type=str, required=True, help='Password is required')
+        
         args = parser.parse_args()
 
         user = User.query.filter_by(email=args['email']).first()
@@ -53,6 +54,8 @@ class Registration(Resource):
         try:
             db.session.add(new_user)
             db.session.commit()
+            session["user_id"]=new_user.id
+            session["user_role"] = new_user.role
             return make_response(jsonify({'message': 'User registered successfully'}), 201)
         except IntegrityError:
             db.session.rollback()
@@ -112,8 +115,6 @@ class AssetById(Resource):
             return make_response(jsonify({'error': 'Asset not found'}), 404)
 
         return make_response(jsonify(asset.to_dict()), 200)
-
-
     def put(self, asset_id):
         asset = Asset.query.filter_by(id=asset_id).first()
         data = request.get_json()
@@ -123,6 +124,7 @@ class AssetById(Resource):
         asset.image_url = data.get('image_url', asset.image_url)
         asset.manufacturer = data.get('manufacturer', asset.manufacturer)
         asset.date_purchased = data.get('date_purchased', asset.date_purchased)
+        asset.date_purchased = data.get('added_on', asset.added_on)
         asset.purchase_cost=data.get("purchase_cost", asset.purchase_cost)
         asset.status = data.get('status', asset.status)
         asset.category = data.get('category', asset.category)
@@ -147,12 +149,11 @@ class AssetById(Resource):
             return make_response(jsonify({'error': str(e)}), 400)
 
 api.add_resource(AssetById,'/assets/<int:asset_id>')
-
 class AssignmentResource(Resource):
     def get(self, assignment_id):
         assignment = Assignment.query.filter_by(id=assignment_id).first()
         if not assignment:
-            return make_response(jsonify({'message': 'Assignment not found'}, 404))
+            return make_response(jsonify({'message': 'Assignment not found'}), 404)
 
         return make_response(jsonify(assignment.to_dict()),200)
 
@@ -167,10 +168,8 @@ class AssignmentResource(Resource):
         parser.add_argument('return_date', type=str, help='Return date')
         args = parser.parse_args()
 
-        
-
         if not assignment:
-            return make_response(jsonify({'message': 'Assignment not found'}, 404))
+            return make_response(jsonify({'message': 'Assignment not found'}), 404)
 
         assignment.asset_id = args['asset_id']
         assignment.user_id = args['user_id']
@@ -184,12 +183,12 @@ class AssignmentResource(Resource):
     def delete(self, assignment_id):
         assignment = Assignment.query.filter_by(id=assignment_id).first()
         if not assignment:
-            return make_response(jsonify({'message': 'Assignment not found'}, 404))
+            return make_response(jsonify({'message': 'Assignment not found'}), 404)
 
         db.session.delete(assignment)
         db.session.commit()
 
-        return make_response(jsonify({'message': 'Assignment deleted successfully'}, 204))
+        return make_response(jsonify({'message': 'Assignment deleted successfully'}), 204)
 api.add_resource(AssignmentResource, '/assignment/<int:assignment_id>')
 
 class AssignmentListResource(Resource):
@@ -305,6 +304,7 @@ class MaintenanceListResource(Resource):
         parser.add_argument('date_of_maintenance', type=str, help='Date of maintenance', required=True)
         parser.add_argument('type', type=str, help='Maintenance type', required=True)
         parser.add_argument('description', type=str, help='Maintenance description')
+        parser.add_argument("cost",required=True, help="Cost required")
 
 
         args = parser.parse_args()
@@ -345,8 +345,6 @@ class MaintenanceResource(Resource):
         parser.add_argument("maintainance_status",type=str,help="Maintenance status Needed")
         args = parser.parse_args()
         
-
-
         if not maintenance:
             response = make_response(jsonify({'error': 'Maintenance not found'}), 404)
             return response
@@ -431,9 +429,9 @@ class RequestsResource(Resource):
 api.add_resource(RequestsResource, '/request/<int:request_id>')
 class RequestListResource(Resource):
     def get(self):
-        requests= [request.to_dict() for request in Requests.query.all()]
-        response = make_response(jsonify(requests), 200)
-        return response
+        requests = Requests.query.all()
+        serialized_requests = [request.to_dict() for request in requests]
+        return make_response(jsonify(serialized_requests), 200)
     def post(self):
         parser = reqparse.RequestParser()
 
@@ -460,6 +458,53 @@ class RequestListResource(Resource):
 
         return make_response(jsonify({'message': 'Request created successfully'}), 201)
 api.add_resource(RequestListResource, '/requests')
+class RequestsByStatusResource(Resource):
+    def get(self, status):
+        if status not in ['Pending', 'Approved', 'Rejected']:
+            return make_response(jsonify({'error': 'Invalid status'}), 400)
+
+        filtered_requests = [requestbystatus.to_dict()  for  requestbystatus in Requests.query.filter_by(status=status).all()]
+
+        return make_response(jsonify(filtered_requests), 200)
+
+api.add_resource(RequestsByStatusResource, '/requests/status/<string:status>')
+class UserRequestsResource(Resource):
+    def get(self, user_id, request_status):
+        if request_status not in ['active', 'completed']:
+            return {'error': 'Invalid request status'}, 400
+        
+        user_requests = Requests.query.filter_by(user_id=user_id).all()
+
+       
+        serialized_requests = [request.to_dict() for request in user_requests]
+
+        return make_response(jsonify(serialized_requests), 200)
+
+api.add_resource(UserRequestsResource, '/user/requests/<int:user_id>')
+
+class UserProfileResource(Resource):
+    def get(self, user_id):
+        user = User.query.filter_by(id=user_id).first()
+        if not user:
+            return make_response(jsonify({'error': 'User not found'}), 404)
+
+        return make_response(jsonify(user.to_dict()), 200)
+
+    def put(self, user_id):
+        user = User.query.filter_by(id=user_id).first()
+        if not user:
+            return make_response(jsonify({'error': 'User not found'}), 404)
+
+        user.full_name = request.json.get('full_name', user.full_name)
+        user.email = request.json.get('email', user.email)
+        user.role = request.json.get('role', user.role)
+        user.department = request.json.get('department', user.department)
+
+        db.session.commit()
+
+        return make_response(jsonify({'message': 'User profile updated successfully'}), 201)
+
+api.add_resource(UserProfileResource, '/user/profile/<int:user_id>')
 
 if __name__ == "__main__":
     app.run(debug=True,port=5555)
