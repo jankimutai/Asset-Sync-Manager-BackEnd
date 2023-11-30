@@ -89,7 +89,7 @@ with app.app_context():
     print('Generating users')
 
     assigned_assets = set()
-    for _ in range(34):
+    for _ in range(4):
         available_assets = Asset.query.filter(Asset.id.notin_(assigned_assets)).all()
         if not available_assets:
             break  # No more available assets to assign
@@ -108,7 +108,7 @@ with app.app_context():
     
     assets_under_maintenance = set()
 
-    for _ in range(20):
+    for _ in range(2):
         available_assets = Asset.query.filter(Asset.id.notin_(assets_under_maintenance)).all()
 
         if not available_assets:
@@ -137,7 +137,7 @@ with app.app_context():
     transaction_types = ['Purchase', 'Transfer', 'Maintenance', 'Sale']
     sold_assets = set()  # Keep track of assets that have been sold
 
-    for _ in range(23):
+    for _ in range(3):
         transaction_type = rc(transaction_types)
         asset = rc(available_assets) if available_assets else None
 

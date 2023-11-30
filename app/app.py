@@ -3,7 +3,7 @@ from psycopg2 import IntegrityError
 from config import app,api,bcrypt,db
 from flask import make_response,jsonify,request,session
 from models import Asset, User, Assignment, Maintenance, Transaction, Requests
-import datetime
+from datetime import datetime
 class Home(Resource):
     def get(self):
         response =make_response(jsonify({"message":"Welcome to Asset-Sync-Manager-Backend"}), 200)
@@ -123,12 +123,12 @@ class AssetById(Resource):
         asset.model = data.get('model', asset.model)
         asset.image_url = data.get('image_url', asset.image_url)
         asset.manufacturer = data.get('manufacturer', asset.manufacturer)
-        asset.date_purchased = data.get('date_purchased', asset.date_purchased)
-        asset.date_purchased = data.get('added_on', asset.added_on)
+        asset.date_purchased = datetime.strptime(data.get('date_purchased', asset.date_purchased), '%Y-%m-%d').date() if data.get('date_purchased') else None
+        asset.added_on = datetime.strptime(data.get('added_on', asset.added_on), '%Y-%m-%d').date() if data.get('added_on') else None
         asset.purchase_cost=data.get("purchase_cost", asset.purchase_cost)
         asset.status = data.get('status', asset.status)
         asset.category = data.get('category', asset.category)
-        asset.serial_number=data.get('category',asset.serial_number)
+        asset.serial_number=data.get('serial_number',asset.serial_number)
 
         try:
             db.session.commit()
@@ -138,7 +138,7 @@ class AssetById(Resource):
             return make_response(jsonify({'error': str(e)}), 400)
 
     def delete(self, asset_id):
-        asset = Asset.query.get_or_404(asset_id)
+        asset = Asset.query.filter_by(id=asset_id).first()
 
         try:
             db.session.delete(asset)
@@ -148,7 +148,7 @@ class AssetById(Resource):
             db.session.rollback()
             return make_response(jsonify({'error': str(e)}), 400)
 
-api.add_resource(AssetById,'/assets/<int:asset_id>')
+api.add_resource(AssetById,'/asset/<int:asset_id>')
 class AssignmentResource(Resource):
     def get(self, assignment_id):
         assignment = Assignment.query.filter_by(id=assignment_id).first()
@@ -212,7 +212,7 @@ class AssignmentListResource(Resource):
             asset_id=args['asset_id'],
             user_id=args['user_id'],
             assignment_date=datetime.strptime(args['assignment_date'], '%Y-%m-%d').date() if args['assignment_date'] else None,
-            return_date=datetime.strptime(args['return_date'], '%Y-%m-%d').date() if args['return_date'] else None
+            return_date= datetime.strptime(args['return_date'], '%Y-%m-%d').date() if args['return_date'] else None
         )
 
         db.session.add(new_assignment)
@@ -301,7 +301,7 @@ class MaintenanceListResource(Resource):
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument('asset_id', type=int, help='Asset ID', required=True)
-        parser.add_argument('date_of_maintenance', type=str, help='Date of maintenance', required=True)
+        parser.add_argument('date_of_maintenance', help='Date of maintenance')
         parser.add_argument('type', type=str, help='Maintenance type', required=True)
         parser.add_argument('description', type=str, help='Maintenance description')
         parser.add_argument("cost",required=True, help="Cost required")
@@ -311,7 +311,7 @@ class MaintenanceListResource(Resource):
 
         new_maintenance = Maintenance(
             asset_id=args['asset_id'],
-            date_of_maintenance=datetime.strptime(args['date_of_maintenance'], '%Y-%m-%d').date(),
+            date_of_maintenance=datetime.strptime(args['date_of_maintenance'], '%d/%m/%Y').date() if args['date_of_maintenance'] else None,
             type=args['type'],
             description=args['description']
         )

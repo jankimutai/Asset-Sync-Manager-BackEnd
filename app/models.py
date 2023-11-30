@@ -85,7 +85,7 @@ class Assignment(db.Model, SerializerMixin):
     user = db.relationship('User', back_populates='assignments')
 
     # Serialization rules
-    serialize_rules = ('-asset.assignments', '-user.assignments',"-user_id",)
+    serialize_rules = ('-asset.assignments', '-user.assignments',)
 
 
 class Maintenance(db.Model, SerializerMixin):
