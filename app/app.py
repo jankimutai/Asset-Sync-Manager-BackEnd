@@ -4,6 +4,16 @@ from config import app,api,bcrypt,db
 from flask import make_response,jsonify,request,session
 from models import Asset, User, Assignment, Maintenance, Transaction, Requests
 from datetime import datetime
+
+from werkzeug.exceptions import NotFound
+
+app.secret_key='qwwerrtyyu123'
+
+@app.before_request
+def check_if_logged_in():
+    session.setdefault("user_id", None)
+    if not session["user_id"] and request.endpoint not in ['login', "check_session","logout","registration"]:
+        return {"error": "unauthorized"}, 401
 class Home(Resource):
     def get(self):
         response =make_response(jsonify({"message":"Welcome to Asset-Sync-Manager-Backend"}), 200)
@@ -23,11 +33,10 @@ class Login(Resource):
 
         if user and user.authenticate(args['password']):
             session["user_id"]=user.id
-            session["user_role"] = user.role
             return make_response(jsonify({'message': 'Login successful'}), 201)
         else:
             return make_response(jsonify({'error': 'Invalid username or password'}), 401)
-api.add_resource(Login,"/login")
+api.add_resource(Login,"/login",endpoint="login")
 class Registration(Resource):
    def post(self):
         parser = reqparse.RequestParser()
@@ -55,13 +64,28 @@ class Registration(Resource):
             db.session.add(new_user)
             db.session.commit()
             session["user_id"]=new_user.id
-            session["user_role"] = new_user.role
             return make_response(jsonify({'message': 'User registered successfully'}), 201)
         except IntegrityError:
             db.session.rollback()
             return make_response(jsonify({'error': 'Username or email already exists'}), 409)
 
-api.add_resource(Registration,"/registration")
+api.add_resource(Registration,"/registration",endpoint="registration")
+class CheckSession(Resource):
+    def get(self):
+        user = User.query.filter(User.id == session.get('user_id')).first()
+        if user:
+            return make_response(jsonify(user.to_dict()), 200)
+        else:
+            return make_response(jsonify({"error": "user not in session:please signin/login"}), 401)
+api.add_resource(CheckSession,'/check_session',endpoint='check_session' )
+class Logout(Resource):
+    def delete(self):
+        if session.get('user_id'):
+            session['user_id']=None
+            return {"message": "User logged out successfully"}
+        else:
+            return {"error":"User must be logged in to logout"}
+api.add_resource(Logout, '/logout', endpoint='logout')
 class PasswordUpdateResource(Resource):
     def put(self, user_id):
         parser = reqparse.RequestParser()
@@ -78,10 +102,10 @@ class PasswordUpdateResource(Resource):
         db.session.commit()
 
         return make_response(jsonify({'message': 'Password updated successfully'}), 200)
-api.add_resource(PasswordUpdateResource, '/user/<int:user_id>/update_password')
+api.add_resource(PasswordUpdateResource, '/update_password',endpoint="/update_password")
 class Assets(Resource):
     def get(self):
-        assets = [asset.to_dict() for asset in Asset.query.all()]
+        assets = [asset.to_dict() for asset in Asset.query.order_by(Asset.id).all()]
         response= make_response(jsonify(assets), 200)
         return response
     def post(self):
@@ -193,7 +217,7 @@ api.add_resource(AssignmentResource, '/assignment/<int:assignment_id>')
 
 class AssignmentListResource(Resource):
     def get(self):
-        assignments = [assignment.to_dict() for assignment in Assignment.query.all()]
+        assignments = [assignment.to_dict() for assignment in Assignment.query.order_by(Assignment.asset_id).all()]
         if not assignments:
             return make_response(jsonify({'message': 'Assignments not found'}, 404))
 
@@ -429,7 +453,7 @@ class RequestsResource(Resource):
 api.add_resource(RequestsResource, '/request/<int:request_id>')
 class RequestListResource(Resource):
     def get(self):
-        requests = Requests.query.all()
+        requests = Requests.query.order_by(Requests.request_id.desc()).all()
         serialized_requests = [request.to_dict() for request in requests]
         return make_response(jsonify(serialized_requests), 200)
     def post(self):
@@ -506,5 +530,12 @@ class UserProfileResource(Resource):
 
 api.add_resource(UserProfileResource, '/user/profile/<int:user_id>')
 
+@app.errorhandler(NotFound)
+def handle_not_found(e):
+    response = make_response(
+        "Not Found:The requested endpoint(resource) does not exist",
+        404
+        )
+    return response
 if __name__ == "__main__":
     app.run(debug=True,port=5555)
