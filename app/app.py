@@ -1,19 +1,17 @@
 from flask_restful import Resource,reqparse
 from psycopg2 import IntegrityError
-from config import app,api,bcrypt,db
+from config import app,api,db
 from flask import make_response,jsonify,request,session
 from models import Asset, User, Assignment, Maintenance, Transaction, Requests
 from datetime import datetime
-
 from werkzeug.exceptions import NotFound
+from flask_cors import cross_origin
 
-app.secret_key='qwwerrtyyu123'
-
-@app.before_request
-def check_if_logged_in():
-    session.setdefault("user_id", None)
-    if not session["user_id"] and request.endpoint not in ['login', "check_session","logout","registration"]:
-        return {"error": "unauthorized"}, 401
+# @app.before_request
+# def check_if_logged_in():
+#     session.setdefault("user_id", None)
+#     if not session["user_id"] and request.endpoint not in ['login', "session_user","logout","registration","assets"]:
+#         return {"error": "unauthorized"}, 401
 class Home(Resource):
     def get(self):
         response =make_response(jsonify({"message":"Welcome to Asset-Sync-Manager-Backend"}), 200)
@@ -21,22 +19,50 @@ class Home(Resource):
     
 api.add_resource(Home,"/")
 class Login(Resource):
-   def post(self):
+    def post(self):
         parser = reqparse.RequestParser()
-
         parser.add_argument('email', type=str, required=True, help='Email is required')
         parser.add_argument('password', type=str, required=True, help='Password is required')
-        
         args = parser.parse_args()
 
         user = User.query.filter_by(email=args['email']).first()
 
-        if user and user.authenticate(args['password']):
-            session["user_id"]=user.id
-            return make_response(jsonify({'message': 'Login successful'}), 201)
+        if user:
+            if user.authenticate(args['password']):
+                if user.role == 'employee' or user.role == "Employee":
+                    session["user_id"] = user.id
+                    return user.to_dict(), 201
+                else:
+                    return make_response(jsonify({'error': 'Insufficient privileges'}), 403)
+            else:
+                return make_response(jsonify({'error': 'Invalid password'}), 401)
         else:
-            return make_response(jsonify({'error': 'Invalid username or password'}), 401)
-api.add_resource(Login,"/login",endpoint="login")
+            return make_response(jsonify({'error': 'Invalid username or insufficient privileges'}), 401)
+
+api.add_resource(Login, "/login", endpoint="login")
+class ManagerLogin(Resource):
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('email', type=str, required=True, help='Email is required')
+        parser.add_argument('password', type=str, required=True, help='Password is required')
+        args = parser.parse_args()
+
+        user = User.query.filter_by(email=args['email']).first()
+
+        if user:
+            if user.authenticate(args['password']):
+                if user.role == 'admin' or user.role == "Admin" or user.role == "Procurement Manager":
+                    session["user_id"] = user.id
+                    return user.to_dict(), 201
+                else:
+                    return make_response(jsonify({'error': 'Insufficient privileges'}), 403)
+            else:
+                return make_response(jsonify({'error': 'Invalid password'}), 401)
+        else:
+            return make_response(jsonify({'error': 'Invalid username or insufficient privileges'}), 401)
+
+api.add_resource(ManagerLogin, "/manager_login", endpoint="manager_login")
+
 class Registration(Resource):
    def post(self):
         parser = reqparse.RequestParser()
@@ -70,14 +96,15 @@ class Registration(Resource):
             return make_response(jsonify({'error': 'Username or email already exists'}), 409)
 
 api.add_resource(Registration,"/registration",endpoint="registration")
-class CheckSession(Resource):
+class CheckUser(Resource):
+    @cross_origin(supports_credentials=True)
     def get(self):
         user = User.query.filter(User.id == session.get('user_id')).first()
         if user:
-            return make_response(jsonify(user.to_dict()), 200)
+            return jsonify(user.to_dict()),200
         else:
-            return make_response(jsonify({"error": "user not in session:please signin/login"}), 401)
-api.add_resource(CheckSession,'/check_session',endpoint='check_session' )
+            return {"error": "user not in session:please signin/login"},401
+api.add_resource(CheckUser,'/session_user',endpoint='session_user' )
 class Logout(Resource):
     def delete(self):
         if session.get('user_id'):
@@ -174,6 +201,21 @@ class AssetById(Resource):
 
 api.add_resource(AssetById,'/asset/<int:asset_id>')
 class AssignmentResource(Resource):
+    @cross_origin(supports_credentials=True)
+    def get(self):
+        # if 'user_id' not in session:
+        #     return jsonify({'error': 'User not in session'}), 401
+        
+        # user_id = session['user_id']
+        user_id=15
+        assignments = Assignment.query.filter_by(user_id=user_id).all()
+
+        serialized_assignments = [assignment.to_dict() for assignment in assignments]
+        return make_response(jsonify(serialized_assignments), 200)
+
+api.add_resource(AssignmentResource, '/user_assignments')
+
+class AssignmentById(Resource):
     def get(self, assignment_id):
         assignment = Assignment.query.filter_by(id=assignment_id).first()
         if not assignment:
@@ -213,7 +255,7 @@ class AssignmentResource(Resource):
         db.session.commit()
 
         return make_response(jsonify({'message': 'Assignment deleted successfully'}), 204)
-api.add_resource(AssignmentResource, '/assignment/<int:assignment_id>')
+api.add_resource(AssignmentById, '/assignment/<int:assignment_id>')
 
 class AssignmentListResource(Resource):
     def get(self):
@@ -482,29 +524,25 @@ class RequestListResource(Resource):
 
         return make_response(jsonify({'message': 'Request created successfully'}), 201)
 api.add_resource(RequestListResource, '/requests')
-class RequestsByStatusResource(Resource):
-    def get(self, status):
-        if status not in ['Pending', 'Approved', 'Rejected']:
-            return make_response(jsonify({'error': 'Invalid status'}), 400)
 
-        filtered_requests = [requestbystatus.to_dict()  for  requestbystatus in Requests.query.filter_by(status=status).all()]
+class UserRequests(Resource):
+    @cross_origin(supports_credentials=True)
+    def get(self):
+        # if 'user_id' not in session:
+        #     return make_response(jsonify({'error': 'User not in session'}), 401)
 
-        return make_response(jsonify(filtered_requests), 200)
+        user_id = 15
+        print(user_id) 
+        requests = Requests.query.filter_by(user_id=user_id).all()
 
-api.add_resource(RequestsByStatusResource, '/requests/status/<string:status>')
-class UserRequestsResource(Resource):
-    def get(self, user_id, request_status):
-        if request_status not in ['active', 'completed']:
-            return {'error': 'Invalid request status'}, 400
+        serialized_requests = [request.to_dict() for request in requests]
+        response = make_response(jsonify(serialized_requests), 200)
         
-        user_requests = Requests.query.filter_by(user_id=user_id).all()
+        return response
+api.add_resource(UserRequests, '/user_requests')
 
-       
-        serialized_requests = [request.to_dict() for request in user_requests]
 
-        return make_response(jsonify(serialized_requests), 200)
 
-api.add_resource(UserRequestsResource, '/user/requests/<int:user_id>')
 
 class UserProfileResource(Resource):
     def get(self, user_id):

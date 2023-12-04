@@ -1,4 +1,5 @@
 app/__pycache__/
 app/instance/
 app/migrations/
-app/flask_session/
+app/flask_session
+flask_session

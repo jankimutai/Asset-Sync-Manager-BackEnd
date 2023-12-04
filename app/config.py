@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask,session
 from flask_restful import Api
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
@@ -17,12 +17,17 @@ app.config['SECURITY_CONFIRMABLE'] = True
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SECRET_KEY'] = 'authtests'
 app.config['JSONIFY_PRETTYPRINT_REGULAR']= True
+
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 app.json.compact = False
 
 db = SQLAlchemy()
 migrate = Migrate(app, db)
 db.init_app(app)
-CORS(app,support_credentials=True)
+
 Session(app)
 bcrypt = Bcrypt(app)
 api = Api(app)
+
+CORS(app,support_credentials=True)

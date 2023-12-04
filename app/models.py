@@ -35,7 +35,7 @@ class Asset(db.Model, SerializerMixin):
 class User(db.Model, SerializerMixin):
     __tablename__ = 'user'
 
-    serialize_rules = ('-assignments.user', '-requests.user',"-_password_hash", "-email", "-department", "-employed_on",)
+    serialize_rules = ('-assignments.user', '-requests.user',"-_password_hash", "-email",)
   
     id = db.Column(db.Integer, primary_key=True)
     full_name = db.Column(db.String(255), nullable=False)
