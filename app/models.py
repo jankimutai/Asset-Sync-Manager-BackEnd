@@ -87,6 +87,17 @@ class Assignment(db.Model, SerializerMixin):
     # Serialization rules
     serialize_rules = ('-asset.assignments', '-user.assignments',)
 
+    @property
+    def asset_name(self):
+        return self.asset.asset_name if self.asset else None
+    
+    @property
+    def name(self):
+        return self.user.full_name if self.user else None
+    
+    
+
+
 
 class Maintenance(db.Model, SerializerMixin):
     __tablename__ = 'maintenance'

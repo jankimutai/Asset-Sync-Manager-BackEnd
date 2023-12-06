@@ -89,7 +89,7 @@ with app.app_context():
     # print('Generating users')
 
     assigned_assets = set()
-    for _ in range(16):
+    for _ in range(40):
         available_assets = Asset.query.filter(Asset.id.notin_(assigned_assets)).all()
         if not available_assets:
             break  # No more available assets to assign
@@ -97,8 +97,8 @@ with app.app_context():
         assigned_assets.add(assignment_asset.id)
         assignment = Assignment(
             asset=assignment_asset,
-            # user=User.query.order_by(db.func.random()).first(),
-            user_id=15,
+            user=User.query.order_by(db.func.random()).first(),
+            # user_id=15,
             assignment_date=fake.date_between(start_date="-1y", end_date="today"),
             return_date=fake.date_between(start_date="today", end_date="+1y"),
     )
@@ -216,10 +216,10 @@ with app.app_context():
     # print('Generating transactions')
 
     asset_names = ['Laptop', 'Desktop', 'Printer', 'Scanner', 'Projector', 'Phone', 'Tablet']
-    for _ in range(15):
+    for _ in range(44):
         request = Requests(
-            # user=User.query.order_by(db.func.random()).first(),
-            user_id=15,
+            user=User.query.order_by(db.func.random()).first(),
+            # user_id=15,
             asset_name=rc(asset_names),
             description=fake.text(),
             quantity=fake.random_int(min=1, max=13),

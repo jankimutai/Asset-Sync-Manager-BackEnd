@@ -203,16 +203,20 @@ api.add_resource(AssetById,'/asset/<int:asset_id>')
 class AssignmentResource(Resource):
     @cross_origin(supports_credentials=True)
     def get(self):
-        # if 'user_id' not in session:
-        #     return jsonify({'error': 'User not in session'}), 401
+        if 'user_id' not in session:
+            return jsonify({'error': 'User not in session'}), 401
         
-        # user_id = session['user_id']
-        user_id=15
+        user_id = session['user_id']
+        # user_id=15
         assignments = Assignment.query.filter_by(user_id=user_id).all()
 
-        serialized_assignments = [assignment.to_dict() for assignment in assignments]
+        serialized_assignments = []
+        for assignment in assignments:
+            serialized_assignment = assignment.to_dict()
+            serialized_assignment['asset_name'] = assignment.asset_name
+            
+            serialized_assignments.append(serialized_assignment)
         return make_response(jsonify(serialized_assignments), 200)
-
 api.add_resource(AssignmentResource, '/user_assignments')
 
 class AssignmentById(Resource):
@@ -259,11 +263,19 @@ api.add_resource(AssignmentById, '/assignment/<int:assignment_id>')
 
 class AssignmentListResource(Resource):
     def get(self):
-        assignments = [assignment.to_dict() for assignment in Assignment.query.order_by(Assignment.asset_id).all()]
+        assignments = Assignment.query.all()
         if not assignments:
             return make_response(jsonify({'message': 'Assignments not found'}, 404))
 
-        return make_response(jsonify(assignments), 200)
+        serialized_assignments = []
+
+        for assignment in assignments:
+            serialized_assignment = assignment.to_dict()
+            serialized_assignment['full_name'] = assignment.name
+            serialized_assignment['asset_name'] = assignment.asset_name
+            serialized_assignments.append(serialized_assignment)
+
+        return make_response(jsonify(serialized_assignments), 200)
     def post(self):
 
         parser = reqparse.RequestParser()
@@ -511,7 +523,7 @@ class RequestListResource(Resource):
         args = parser.parse_args()
 
         new_request = Requests(
-            user_id=args['user_id'],
+            user_id=15,
             asset_name=args['asset_name'],
             description=args['description'],
             quantity=args['quantity'],
@@ -532,7 +544,7 @@ class UserRequests(Resource):
         #     return make_response(jsonify({'error': 'User not in session'}), 401)
 
         user_id = 15
-        print(user_id) 
+        # print(user_id) 
         requests = Requests.query.filter_by(user_id=user_id).all()
 
         serialized_requests = [request.to_dict() for request in requests]
@@ -540,9 +552,6 @@ class UserRequests(Resource):
         
         return response
 api.add_resource(UserRequests, '/user_requests')
-
-
-
 
 class UserProfileResource(Resource):
     def get(self, user_id):
