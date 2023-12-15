@@ -8,7 +8,7 @@ fake = Faker()
 
 with app.app_context():
     Asset.query.delete()
-    # User.query.delete()
+    User.query.delete()
     Assignment.query.delete()
     Maintenance.query.delete()
     Transaction.query.delete()
@@ -60,33 +60,33 @@ with app.app_context():
 
     print('Generating assets')
 
-    # users = []
+    users = []
 
-    # for i in range(2):
+    for i in range(2):
         
 
-    #     role = rc(['Normal Employee', 'Admin', 'Procurement Manager'])
+        role = rc(['Normal Employee', 'Admin', 'Procurement Manager'])
         
-    #     if role in ['Admin', 'Procurement Manager']:
-    #         department = 'Management'
-    #     else:
-    #         department = rc(["Marketing", "Finance", "Human Resource", "Management", "Operations", "Audit", "IT"])
+        if role in ['Admin', 'Procurement Manager']:
+            department = 'Management'
+        else:
+            department = rc(["Marketing", "Finance", "Human Resource", "Management", "Operations", "Audit", "IT"])
 
-    #     user = User(
-    #         full_name=fake.name(),
-    #         username=fake.user_name(),
-    #         email=fake.email(),
-    #         _password_hash = bcrypt.generate_password_hash(fake.password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True)).decode('utf-8'),
-    #         employed_on=fake.date_between(start_date="-2y", end_date="today"),
-    #         role=role,
-    #         department=department  
-    #     )
+        user = User(
+            full_name=fake.name(),
+            username=fake.user_name(),
+            email=fake.email(),
+            _password_hash = bcrypt.generate_password_hash(fake.password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True)).decode('utf-8'),
+            employed_on=fake.date_between(start_date="-2y", end_date="today"),
+            role=role,
+            department=department  
+        )
 
-    #     users.append(user)
-    #     db.session.add_all(users)
-    # db.session.commit()
+        users.append(user)
+        db.session.add_all(users)
+    db.session.commit()
 
-    # print('Generating users')
+    print('Generating users')
 
     assigned_assets = set()
     for _ in range(30):

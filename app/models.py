@@ -19,7 +19,7 @@ class Asset(db.Model, SerializerMixin):
     added_on = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(50))
     category = db.Column(db.String(50))
-    serial_number=db.Column(db.Integer())
+    serial_number=db.Column(db.String())
     
     # Relationships
     assignments = db.relationship('Assignment', back_populates='asset')

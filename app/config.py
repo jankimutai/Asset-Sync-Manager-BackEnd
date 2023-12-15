@@ -7,11 +7,11 @@ from flask_bcrypt import Bcrypt
 from flask_session import Session
 from datetime import timedelta
 app = Flask(__name__)
-
+import os
 CORS(app,support_credentials=True)
 app.secret_key = 'Asset-Sync-Manager'
 
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///assets.db"
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get('DATABASE_URI')
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config['SECURITY_REGISTERABLE'] = True
 app.config['SECURITY_PASSWORD_SALT'] = 'somesalt'
