@@ -7,7 +7,10 @@ from flask_bcrypt import Bcrypt
 from flask_session import Session
 from datetime import timedelta
 app = Flask(__name__)
-app.secret_key = "Asset-Sync"
+
+CORS(app,support_credentials=True)
+app.secret_key = 'Asset-Sync-Manager'
+
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///assets.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config['SECURITY_REGISTERABLE'] = True
@@ -21,7 +24,9 @@ app.config['SESSION_PERMANENT'] = True
 app.config['SESSION_USE_SIGNER'] = True
 app.config['SESSION_FILE_THRESHOLD'] = 100
 app.config['SESSION_COOKIE_SECURE'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=7)
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
 app.json.compact = False
 
 app.permanent_session_lifetime = timedelta(minutes=60)
@@ -34,4 +39,3 @@ Session(app)
 bcrypt = Bcrypt(app)
 api = Api(app)
 
-CORS(app,support_credentials=True)

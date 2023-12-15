@@ -144,3 +144,7 @@ class Requests(db.Model, SerializerMixin):
 
     # Relationships
     user = db.relationship('User', back_populates='requests')
+
+    @property
+    def user_name(self):
+        return self.user.full_name if self.user else None

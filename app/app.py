@@ -5,13 +5,9 @@ from flask import make_response,jsonify,request,session
 from models import Asset, User, Assignment, Maintenance, Transaction, Requests
 from datetime import datetime
 from werkzeug.exceptions import NotFound
-from flask_cors import cross_origin
+from flask_cors import cross_origin,CORS
+from sqlalchemy import desc
 
-# @app.before_request
-# def check_if_logged_in():
-#     session.setdefault("user_id", None)
-#     if not session["user_id"] and request.endpoint not in ['login', "session_user","logout","registration","assets"]:
-#         return {"error": "unauthorized"}, 401
 class Home(Resource):
     def get(self):
         response =make_response(jsonify({"message":"Welcome to Asset-Sync-Manager-Backend"}), 200)
@@ -31,6 +27,8 @@ class Login(Resource):
             if user.authenticate(args['password']):
                 if user.role == 'employee' or user.role == "Employee":
                     session["user_id"] = user.id
+                    session.permanent = True
+                    print(f"User ID set in session: {session['user_id']}")
                     return user.to_dict(), 201
                 else:
                     return make_response(jsonify({'error': 'Insufficient privileges'}), 403)
@@ -38,7 +36,6 @@ class Login(Resource):
                 return make_response(jsonify({'error': 'Invalid password'}), 401)
         else:
             return make_response(jsonify({'error': 'Invalid username or insufficient privileges'}), 401)
-
 api.add_resource(Login, "/login", endpoint="login")
 class ManagerLogin(Resource):
     def post(self):
@@ -51,18 +48,18 @@ class ManagerLogin(Resource):
 
         if user:
             if user.authenticate(args['password']):
-                if user.role == 'admin' or user.role == "Admin" or user.role == "Procurement Manager":
+                if user.role == "Admin" or user.role == "Procurement" :
                     session["user_id"] = user.id
-                    return user.to_dict(), 201
+                    session.permanent = True
+                    print(f"User ID set in session: {session['user_id']}")
+                    return make_response(jsonify(user.to_dict()), 201)
                 else:
                     return make_response(jsonify({'error': 'Insufficient privileges'}), 403)
             else:
                 return make_response(jsonify({'error': 'Invalid password'}), 401)
         else:
             return make_response(jsonify({'error': 'Invalid username or insufficient privileges'}), 401)
-
 api.add_resource(ManagerLogin, "/manager_login", endpoint="manager_login")
-
 class Registration(Resource):
    def post(self):
         parser = reqparse.RequestParser()
@@ -89,7 +86,8 @@ class Registration(Resource):
         try:
             db.session.add(new_user)
             db.session.commit()
-            session["user_id"]=new_user.id
+            # session["user_id"]=new_user.id
+            # session.permanent=True
             return make_response(jsonify({'message': 'User registered successfully'}), 201)
         except IntegrityError:
             db.session.rollback()
@@ -103,7 +101,7 @@ class CheckUser(Resource):
         if user:
             return jsonify(user.to_dict()),200
         else:
-            return {"error": "user not in session:please signin/login"},401
+            return jsonify({"error": "user not in session:please signin/login"}), 401
 api.add_resource(CheckUser,'/session_user',endpoint='session_user' )
 class Logout(Resource):
     def delete(self):
@@ -132,22 +130,25 @@ class PasswordUpdateResource(Resource):
 api.add_resource(PasswordUpdateResource, '/update_password',endpoint="/update_password")
 class Assets(Resource):
     def get(self):
-        assets = [asset.to_dict() for asset in Asset.query.order_by(Asset.id).all()]
+        assets = [asset.to_dict() for asset in Asset.query.order_by(desc(Asset.id)).all()]
         response= make_response(jsonify(assets), 200)
         return response
     def post(self):
         data = request.get_json()
+        
+        # Log the incoming data for debugging
+        app.logger.debug(f"Incoming POST request data: {data}")
 
         new_asset = Asset(
-            asset_name=data['asset_name'],
-            model=data['model'],
-            image_url=data.get('image_url'),
+            asset_name=data.get('assetName'),
+            model=data.get('model'),
+            image_url=data.get('imageUrl'),
             manufacturer=data.get('manufacturer'),
-            date_purchased=data.get('date_purchased'),
-            purchase_cost= data.get("purchase_cost"),
+            date_purchased=data.get('datePurchased'),
+            purchase_cost=data.get("purchaseCost"),
             status=data.get('status'),
             category=data.get('category'),
-            serial_number=data.get('serial_number')
+            serial_number=data.get('serialNumber')
         )
 
         try:
@@ -200,25 +201,6 @@ class AssetById(Resource):
             return make_response(jsonify({'error': str(e)}), 400)
 
 api.add_resource(AssetById,'/asset/<int:asset_id>')
-class AssignmentResource(Resource):
-    @cross_origin(supports_credentials=True)
-    def get(self):
-        if 'user_id' not in session:
-            return jsonify({'error': 'User not in session'}), 401
-        
-        user_id = session['user_id']
-        # user_id=15
-        assignments = Assignment.query.filter_by(user_id=user_id).all()
-
-        serialized_assignments = []
-        for assignment in assignments:
-            serialized_assignment = assignment.to_dict()
-            serialized_assignment['asset_name'] = assignment.asset_name
-            
-            serialized_assignments.append(serialized_assignment)
-        return make_response(jsonify(serialized_assignments), 200)
-api.add_resource(AssignmentResource, '/user_assignments')
-
 class AssignmentById(Resource):
     def get(self, assignment_id):
         assignment = Assignment.query.filter_by(id=assignment_id).first()
@@ -263,7 +245,8 @@ api.add_resource(AssignmentById, '/assignment/<int:assignment_id>')
 
 class AssignmentListResource(Resource):
     def get(self):
-        assignments = Assignment.query.all()
+        assignments = Assignment.query.order_by(desc(Assignment.asset_id)).all()
+
         if not assignments:
             return make_response(jsonify({'message': 'Assignments not found'}, 404))
 
@@ -508,7 +491,16 @@ api.add_resource(RequestsResource, '/request/<int:request_id>')
 class RequestListResource(Resource):
     def get(self):
         requests = Requests.query.order_by(Requests.request_id.desc()).all()
-        serialized_requests = [request.to_dict() for request in requests]
+        if not requests:
+            return make_response(jsonify({'message': 'Requests not found'}, 404))
+
+        serialized_requests = []
+
+        for a_request in requests:
+            serialized_request = a_request.to_dict()
+            serialized_request['full_name'] = a_request.user_name
+            serialized_requests.append(serialized_request)
+
         return make_response(jsonify(serialized_requests), 200)
     def post(self):
         parser = reqparse.RequestParser()
@@ -523,7 +515,7 @@ class RequestListResource(Resource):
         args = parser.parse_args()
 
         new_request = Requests(
-            user_id=15,
+            user_id=args["user_id"],
             asset_name=args['asset_name'],
             description=args['description'],
             quantity=args['quantity'],
@@ -536,23 +528,46 @@ class RequestListResource(Resource):
 
         return make_response(jsonify({'message': 'Request created successfully'}), 201)
 api.add_resource(RequestListResource, '/requests')
-
-class UserRequests(Resource):
+class UserRequestsResource(Resource):
     @cross_origin(supports_credentials=True)
-    def get(self):
-        # if 'user_id' not in session:
-        #     return make_response(jsonify({'error': 'User not in session'}), 401)
+    def get(self, user_id):
+        user_requests = Requests.query.filter_by(user_id=user_id).all()
+        serialized_requests = [request.to_dict() for request in user_requests]
 
-        user_id = 15
-        # print(user_id) 
-        requests = Requests.query.filter_by(user_id=user_id).all()
+        return jsonify({'user_requests': serialized_requests}), 200
 
-        serialized_requests = [request.to_dict() for request in requests]
-        response = make_response(jsonify(serialized_requests), 200)
-        
-        return response
-api.add_resource(UserRequests, '/user_requests')
+api.add_resource(UserRequestsResource, '/user_requests/<int:user_id>')
 
+#for handling approval
+class ApproveRequestResource(Resource):
+    def put(self, request_id):
+        request_obj = Requests.query.filter_by(request_id=request_id).first()
+
+        if not request_obj:
+            response = make_response(jsonify({'error': 'Request not found'}), 404)
+            return response
+
+        # Set status to "Approved" when approving
+        request_obj.status = 'Approved'
+        db.session.commit()
+
+        return make_response(jsonify({'message': 'Request approved successfully'}), 201)
+api.add_resource(ApproveRequestResource, '/request/approve/<int:request_id>')
+# for handling decline
+class DeclineRequestResource(Resource):
+    def put(self, request_id):
+        request_obj = Requests.query.filter_by(request_id=request_id).first()
+
+        if not request_obj:
+            response = make_response(jsonify({'error': 'Request not found'}), 404)
+            return response
+
+        # Set status to "Declined" when declining
+        request_obj.status = 'Declined'
+        db.session.commit()
+
+        return make_response(jsonify({'message': 'Request declined successfully'}), 201)
+api.add_resource(DeclineRequestResource, '/request/decline/<int:request_id>')
 class UserProfileResource(Resource):
     def get(self, user_id):
         user = User.query.filter_by(id=user_id).first()
