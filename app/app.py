@@ -1,8 +1,8 @@
 from flask_restful import Resource,reqparse
 from psycopg2 import IntegrityError
-from config import app,api,db
+from app.config import app,api,db
 from flask import make_response,jsonify,request,session
-from models import Asset, User, Assignment, Maintenance, Transaction, Requests
+from app.models import Asset, User, Assignment, Maintenance, Transaction, Requests
 from datetime import datetime
 from werkzeug.exceptions import NotFound
 from flask_cors import cross_origin,CORS
