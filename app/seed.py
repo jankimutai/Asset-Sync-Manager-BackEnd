@@ -1,6 +1,6 @@
 from psycopg2 import IntegrityError
-from app.config import app,db, bcrypt
-from app.models import Asset, User, Assignment, Maintenance, Transaction, Requests
+from config import app,db, bcrypt
+from models import Asset, User, Assignment, Maintenance, Transaction, Requests
 from faker import Faker
 from random import choice as rc,randint
 from datetime import datetime
